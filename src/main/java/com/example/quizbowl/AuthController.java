@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
         "https://quizbowl.game-manager.org",
         "https://api.quizbowl.game-manager.org"
 })
-// This CORS Policy allows requests from the specified origins
+// This CORS Policy allows requests from the specified origins - now it should be correct
 public class AuthController {
 
     private final AuthService authService;
