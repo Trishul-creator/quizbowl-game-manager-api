@@ -1,0 +1,56 @@
+name: Deploy Backend to Elastic Beanstalk (JAR)
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+          cache: "maven"
+
+      - name: Build JAR with Maven
+        run: mvn -B -DskipTests package
+
+      - name: Locate built jar
+        id: jar
+        run: |
+          JAR_PATH=$(ls target/*.jar | grep -v "original" | head -n 1)
+          echo "JAR_PATH=$JAR_PATH" >> $GITHUB_ENV
+          echo "Found jar: $JAR_PATH"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload JAR to S3 (EB versions bucket)
+        run: |
+          VERSION_LABEL=git-${GITHUB_SHA::8}-${GITHUB_RUN_NUMBER}
+          echo "VERSION_LABEL=$VERSION_LABEL" >> $GITHUB_ENV
+          aws s3 cp "$JAR_PATH" "s3://${{ secrets.EB_S3_BUCKET }}/backend-${VERSION_LABEL}.jar"
+
+      - name: Create EB application version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name "${{ secrets.EB_APPLICATION_NAME }}" \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle S3Bucket="${{ secrets.EB_S3_BUCKET }}",S3Key="backend-${VERSION_LABEL}.jar"
+
+      - name: Deploy version to EB environment
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name "${{ secrets.EB_ENVIRONMENT_NAME }}" \
+            --version-label "$VERSION_LABEL"
