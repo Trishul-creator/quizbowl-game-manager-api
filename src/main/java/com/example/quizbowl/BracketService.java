@@ -15,12 +15,14 @@ public class BracketService {
     private final BracketTeamRepository teamRepo;
     private final BracketMatchRepository matchRepo;
     private final BracketMetaRepository metaRepo;
+    private final BracketStreamService streamService;
 
-    public BracketService(GameService gameService, BracketTeamRepository teamRepo, BracketMatchRepository matchRepo, BracketMetaRepository metaRepo) {
+    public BracketService(GameService gameService, BracketTeamRepository teamRepo, BracketMatchRepository matchRepo, BracketMetaRepository metaRepo, BracketStreamService streamService) {
         this.gameService = gameService;
         this.teamRepo = teamRepo;
         this.matchRepo = matchRepo;
         this.metaRepo = metaRepo;
+        this.streamService = streamService;
     }
 
     private BracketMetaEntity meta() {
@@ -49,6 +51,7 @@ public class BracketService {
         meta.setFinished(false);
         metaRepo.save(meta);
         if (teamNames == null) {
+            streamService.broadcast(getState());
             return;
         }
         for (String raw : teamNames) {
@@ -61,6 +64,7 @@ public class BracketService {
                 teamRepo.save(t);
             }
         }
+        streamService.broadcast(getState());
     }
 
     public synchronized void resetBracket() {
@@ -71,6 +75,7 @@ public class BracketService {
         meta.setCurrentTeamBId(null);
         meta.setFinished(false);
         metaRepo.save(meta);
+        streamService.broadcast(getState());
     }
 
     public synchronized void setCurrentMatch(String teamAId, String teamBId, String gameId) {
@@ -109,6 +114,7 @@ public class BracketService {
                 nm.setCompleted(false);
                 matchRepo.save(nm);
             }
+            streamService.broadcast(getState());
         }
     }
 
@@ -180,6 +186,7 @@ public class BracketService {
 
         BracketState state = getState();
         updateFinishedFlag(state, meta());
+        streamService.broadcast(state);
     }
 
     private void updateFinishedFlag(BracketState state, BracketMetaEntity meta) {

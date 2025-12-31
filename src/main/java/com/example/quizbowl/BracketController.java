@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/bracket")
@@ -23,15 +24,27 @@ public class BracketController {
 
     private final BracketService bracketService;
     private final AuthService authService;
+    private final BracketStreamService streamService;
 
-    public BracketController(BracketService bracketService, AuthService authService) {
+    public BracketController(BracketService bracketService, AuthService authService, BracketStreamService streamService) {
         this.bracketService = bracketService;
         this.authService = authService;
+        this.streamService = streamService;
     }
 
     @GetMapping
     public BracketState getState() {
         return bracketService.getState();
+    }
+
+    @GetMapping("/stream")
+    public SseEmitter stream() {
+        SseEmitter emitter = streamService.register();
+        try {
+            emitter.send(SseEmitter.event().name("bracket").data(bracketService.getState()));
+        } catch (Exception ignored) {
+        }
+        return emitter;
     }
 
     @PostMapping("/init")
