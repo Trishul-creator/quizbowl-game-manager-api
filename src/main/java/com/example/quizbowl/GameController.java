@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/game")
@@ -23,15 +24,27 @@ public class GameController {
 
     private final GameService gameService;
     private final AuthService authService;
+    private final GameStreamService streamService;
 
-    public GameController(GameService gameService, AuthService authService) {
+    public GameController(GameService gameService, AuthService authService, GameStreamService streamService) {
         this.gameService = gameService;
         this.authService = authService;
+        this.streamService = streamService;
     }
 
     @GetMapping
     public GameState getState(@RequestParam(name = "gameId", defaultValue = "default") String gameId) {
         return gameService.getState(gameId);
+    }
+
+    @GetMapping("/stream")
+    public SseEmitter stream(@RequestParam(name = "gameId", defaultValue = "default") String gameId) {
+        SseEmitter emitter = streamService.register();
+        try {
+            emitter.send(SseEmitter.event().name("game").data(gameService.getState(gameId)));
+        } catch (Exception ignored) {
+        }
+        return emitter;
     }
 
     @PostMapping("/team-names")

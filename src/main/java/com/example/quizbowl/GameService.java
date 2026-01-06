@@ -10,10 +10,12 @@ public class GameService {
 
     private final GameStateRepository stateRepo;
     private final GameEventRepository eventRepo;
+    private final GameStreamService streamService;
 
-    public GameService(GameStateRepository stateRepo, GameEventRepository eventRepo) {
+    public GameService(GameStateRepository stateRepo, GameEventRepository eventRepo, GameStreamService streamService) {
         this.stateRepo = stateRepo;
         this.eventRepo = eventRepo;
+        this.streamService = streamService;
     }
 
     private GameStateEntity stateFor(String gameId) {
@@ -78,6 +80,7 @@ public class GameService {
             state.setTeamBName(teamBName.trim());
         }
         stateRepo.save(state);
+        streamService.broadcast(getState(gameId));
     }
 
     public void resetGame(String gameId) {
@@ -88,6 +91,7 @@ public class GameService {
         state.setLastTossupWinner(null);
         stateRepo.save(state);
         eventRepo.deleteAll(eventRepo.findByGameIdOrderByTimestampDesc(state.getGameId()));
+        streamService.broadcast(getState(gameId));
     }
 
     public void nextTossup(String gameId) {
@@ -96,6 +100,7 @@ public class GameService {
         state.setLastTossupWinner(null);
         stateRepo.save(state);
         addEvent(state, "NEXT_TOSSUP", "Moving to tossup #" + state.getQuestionNumber(), null, null);
+        streamService.broadcast(getState(gameId));
     }
 
     public void awardTossup(String gameId, String team) {
@@ -113,6 +118,7 @@ public class GameService {
             addEvent(state, "TOSSUP", "Tossup +10 → " + state.getTeamBName(), "B", 10);
         }
         stateRepo.save(state);
+        streamService.broadcast(getState(gameId));
     }
 
     public void awardBonus(String gameId, int points) {
@@ -128,5 +134,6 @@ public class GameService {
             addEvent(state, "BONUS", "Bonus +" + points + " → " + state.getTeamBName(), "B", points);
         }
         stateRepo.save(state);
+        streamService.broadcast(getState(gameId));
     }
 }
