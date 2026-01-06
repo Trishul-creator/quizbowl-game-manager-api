@@ -19,8 +19,13 @@ jobs:
           java-version: "17"
           cache: "maven"
 
+      - name: Clear Maven cache (fix for dependency issues)
+        run: |
+          rm -rf ~/.m2/repository/org/codehaus/plexus
+          rm -rf ~/.m2/repository/org/apache/maven/plugins/maven-compiler-plugin
+
       - name: Build JAR with Maven
-        run: mvn -B -DskipTests package
+        run: mvn -B -DskipTests -U package
 
       - name: Locate built jar
         id: jar
